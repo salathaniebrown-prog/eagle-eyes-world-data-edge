@@ -1,0 +1,40 @@
+name: Astra Engine Production Deployment
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  validate-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Clone Repository Context
+        uses: actions/checkout@v4
+
+      - name: 🔬 Syntax & Lint Verification
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8
+          # Stop the build if there are Python syntax errors or undefined names
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+      - name: 🐋 Validate Deployment Configuration Architecture
+        run: |
+          if [ ! -f "railway.json" ]; then
+            echo "❌ Error: Deployment manifest configuration 'railway.json' is missing!"
+            exit 1
+          fi
+          if [ ! -f "crypto-board/Dockerfile" ]; then
+            echo "❌ Error: Production 'crypto-board/Dockerfile' container specification missing!"
+            exit 1
+          fi
+          echo "✅ Pipeline Pre-Flight Checks Passed. Configuration matrix approved."
+
+      - name: 🚀 Trigger Cloud Dashboard Rollout
+        uses: bervProject/railway-deploy-action@v1
+        with:
+          railway_token: ${{ secrets.RAILWAY_TOKEN }}
